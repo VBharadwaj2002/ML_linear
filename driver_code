@@ -1,0 +1,83 @@
+import numpy as np
+import pandas as pd
+
+class LinearRegression:
+    def __init__(self, alpha=0.01, iterations=1000):
+        self.alpha = alpha
+        self.iterations = iterations
+        self.W = None
+
+    def normalize_data(self, df):
+        ndf = df.drop(df.columns[[0, 1]], axis=1).copy()
+        for column in ndf.columns:
+            ndf[column] = (ndf[column] - ndf[column].min()) / (ndf[column].max() - ndf[column].min())
+        return ndf
+
+    def add_intercept(self, X):
+        return np.c_[np.ones((X.shape[0], 1)), X]
+
+    def cost_function(self, X, Y):
+        pred = X.dot(self.W)
+        cost = (1/2) * np.sum(np.square(Y - pred))
+        return cost
+
+    def gradient_descent(self, X, Y):
+        n = X.shape[0]
+        m = X.shape[1]
+
+        cost_iter = np.zeros(self.iterations)
+        W_iter = np.zeros((self.iterations, m))
+
+        for i in range(self.iterations):
+            pred = X.dot(self.W)
+            self.W = self.W - (self.alpha/n) * (X.T.dot((pred - Y)))
+            W_iter[i, :] = self.W.T
+            cost_iter[i] = self.cost_function(X, Y)
+
+        return cost_iter, W_iter
+
+    def fit(self, X_train, Y_train):
+        X_train_normalized = self.normalize_data(X_train)
+        X_train_normalized_intercept = self.add_intercept(X_train_normalized)
+        Y_train_reshaped = Y_train.reshape(-1, 1)
+
+        self.W = np.zeros((X_train_normalized_intercept.shape[1], 1))
+
+        cost_iter, _ = self.gradient_descent(X_train_normalized_intercept, Y_train_reshaped)
+
+        return cost_iter
+
+    def predict(self, X_test):
+        X_test_normalized = self.normalize_data(X_test)
+        X_test_intercept = self.add_intercept(X_test_normalized)
+
+        return X_test_intercept.dot(self.W)
+
+
+# Entry the given data
+df = pd.read_csv('/content/machine.csv', header=None)
+
+# Divided the data into training and testing data
+total_rows = len(df)
+train_rows = int(0.8 * total_rows)
+train_indices = np.random.choice(total_rows, train_rows, replace=False)
+df_train = df.iloc[train_indices, :]
+df_test = df.drop(train_indices)
+
+# Separate features and target variable
+X_train = df_train.iloc[:, :-1]
+Y_train = df_train.iloc[:, -1].values
+
+X_test = df_test.iloc[:, :-1]
+Y_test = df_test.iloc[:, -1].values
+
+# Create and fit the model
+model = LinearRegression(alpha=optimal_alpha)
+cost_iter = model.fit(X_train, Y_train)
+
+# Predict on the test set
+Y_test_predicted = model.predict(X_test)
+
+# Calculate MSE
+mse = np.sum(np.square(Y_test - Y_test_predicted)) / Y_test.shape[0]
+print("Mean Squared Error:", mse)
